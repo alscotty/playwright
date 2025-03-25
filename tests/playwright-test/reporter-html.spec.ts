@@ -32,19 +32,20 @@ const test = baseTest.extend<{ showReport: (reportFolder?: string) => Promise<vo
       await server.start();
       await page.goto(server.urlPrefix('precise'));
     });
+    test.use({ channel: 'chrome' });
+    test.slow(!!process.env.CI);
+    test.describe.configure({ mode: 'parallel' });
+
     await server?.stop();
   }
 });
 
-test.use({ channel: 'chrome' });
-test.slow(!!process.env.CI);
 // Slow tests are 90s.
 const expect = baseExpect.configure({ timeout: process.env.CI ? 75000 : 25000 });
 
-test.describe.configure({ mode: 'parallel' });
 
 for (const useIntermediateMergeReport of [true, false] as const) {
-  test.describe(`${useIntermediateMergeReport ? 'merged' : 'created'}`, () => {
+    test.describe(`${useIntermediateMergeReport ? 'merged' : 'created'}`, () => {
     test.use({ useIntermediateMergeReport });
 
     test('should generate report', async ({ runInlineTest, showReport, page }) => {
