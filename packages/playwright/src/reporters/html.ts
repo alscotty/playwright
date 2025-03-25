@@ -243,6 +243,7 @@ class HtmlBuilder {
 
   async build(metadata: Metadata, projectSuites: api.Suite[], result: api.FullResult, topLevelErrors: api.TestError[]): Promise<{ ok: boolean, singleTestId: string | undefined }> {
     const data = new Map<string, { testFile: TestFile, testFileSummary: TestFileSummary }>();
+    const filter = process.env.PLAYWRIGHT_TEST_FILTER || ''; // Example filter from environment variable
     for (const projectSuite of projectSuites) {
       for (const fileSuite of projectSuite.suites) {
         const fileName = this._relativeLocation(fileSuite.location)!.file;
@@ -256,8 +257,12 @@ class HtmlBuilder {
           data.set(fileId, fileEntry);
         }
         const { testFile, testFileSummary } = fileEntry;
-        const testEntries: TestEntry[] = [];
+        let testEntries: TestEntry[] = [];
         this._processSuite(fileSuite, projectSuite.project()!.name, [], testEntries);
+        testEntries = filterTests(testEntries.map(te => te.testCase), filter).map(tc => ({
+          testCase: tc,
+          testCaseSummary: testFileSummary.tests.find(tcs => tcs.testId === tc.testId)!
+        }));
         for (const test of testEntries) {
           testFile.tests.push(test.testCase);
           testFileSummary.tests.push(test.testCaseSummary);
@@ -670,6 +675,26 @@ function createSnippets(stepsInFile: MultiMap<string, TestStep>) {
       step.snippet = snippetLines.join('\n');
     }
   }
+}
+
+function filterTests(tests: TestCase[], filter: string): TestCase[] {
+  const filters = filter.split(' ').filter(f => f);
+  return tests.filter(test => {
+    for (const f of filters) {
+      const isNotFilter = f.startsWith('!');
+      const filterText = isNotFilter ? f.slice(1) : f;
+      const [key, value] = filterText.split(':');
+      if (key === 'annot') {
+        const hasAnnotation = test.annotations.some(a => a.type === value);
+        if (isNotFilter ? hasAnnotation : !hasAnnotation) return false;
+      } else if (key === 's') {
+        if (isNotFilter ? test.outcome === value : test.outcome !== value) return false;
+      } else if (key === 'p') {
+        if (isNotFilter ? test.projectName === value : test.projectName !== value) return false;
+      }
+    }
+    return true;
+  });
 }
 
 export default HtmlReporter;
