@@ -467,7 +467,16 @@ test('should show snapshot URL', async ({ page, runAndTrace, server }) => {
     await page.evaluate('2+2');
   });
   await traceViewer.snapshotFrame('page.evaluate');
-  await expect(traceViewer.page.locator('.browser-frame-address-bar')).toHaveText(server.EMPTY_PAGE);
+  const browserFrameAddressBarLocator = traceViewer.page.locator('.browser-frame-address-bar');
+  await expect(browserFrameAddressBarLocator).toHaveText(server.EMPTY_PAGE);
+  await traceViewer.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await expect(browserFrameAddressBarLocator).toHaveText(server.EMPTY_PAGE);
+  const copySelectorLocator = traceViewer.page.locator('.browser-frame-address-bar > button[title="Copy"]');
+  await expect(copySelectorLocator).toBeHidden();
+  await traceViewer.page.hover('.browser-frame-address-bar');
+  await expect(copySelectorLocator).toBeVisible();
+  await copySelectorLocator.click();
+  expect(await traceViewer.page.evaluate(() => navigator.clipboard.readText())).toBe(server.EMPTY_PAGE);
 });
 
 test('should popup snapshot', async ({ page, runAndTrace, server }) => {
