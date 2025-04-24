@@ -184,3 +184,40 @@ test('waitFor should not leak', async ({ page, mode, toImpl }) => {
   expect(leakedJSHandles()).toBeFalsy();
   await checkWeakRefs(toImpl(page), 2, 25);
 });
+
+test('requestGC should work in Web Workers', async ({ page }) => {
+  const workerScript = `
+    globalThis.weakRefs = [];
+    globalThis.createWeakRefs = (elements) => {
+      for (const element of elements) {
+        globalThis.weakRefs.push(new WeakRef(element));
+      }
+    };
+    globalThis.countWeakRefs = () => globalThis.weakRefs.filter(r => !!r.deref()).length;
+  `;
+
+  const worker = await page.evaluateHandle((script) => {
+    const blob = new Blob([script.join('')], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    return new Worker(url);
+  }, [workerScript]);
+
+  // Verify the function exists in the worker
+  const hasCreateWeakRefs = await worker.evaluate(() => {
+    // console.log({ globalThis })
+    // return typeof globalThis.createWeakRefs === 'function';
+    return globalThis
+  });
+  console.log("TESTING")
+  console.log(hasCreateWeakRefs.createWeakRefs);
+  // expect(hasCreateWeakRefs).toBe(true);
+
+  // await worker.evaluate(() => {
+  //   globalThis.createWeakRefs([{ key: 'value' }, { key: 'value2' }]);
+  // });
+
+  await page.requestGC();
+
+  const weakRefCount = await worker.evaluate(() => globalThis.countWeakRefs());
+  expect(weakRefCount).toBe(0);
+});

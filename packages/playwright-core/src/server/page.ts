@@ -442,8 +442,19 @@ export class Page extends SdkObject {
     }), this._timeoutSettings.navigationTimeout(options));
   }
 
-  requestGC(): Promise<void> {
-    return this._delegate.requestGC();
+  async requestGC() {
+    // Trigger garbage collection in the main frame.
+    const context = await this.mainFrame()._context('main');
+    await context.evaluate(() => {
+      if (globalThis.gc) globalThis.gc();
+    });
+
+    // Trigger garbage collection in all active Web Workers.
+    for (const worker of this._workers.values()) {
+      await worker.evaluateExpression(`() => {
+        if (globalThis.gc) globalThis.gc();
+      }`, true, undefined);
+    }
   }
 
   registerLocatorHandler(selector: string, noWaitAfter: boolean | undefined) {
