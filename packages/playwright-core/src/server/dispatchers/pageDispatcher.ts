@@ -145,7 +145,7 @@ export class PageDispatcher extends Dispatcher<Page, channels.PageChannel, Brows
     await this._page.requestGC();
   }
   
-  async requesrequestWebWorkersGCGC(params: channels.PageRequestWorkerGCParams, metadata: CallMetadata): Promise<channels.PageRequestWorkerGCResult> {
+  async requestWebWorkersGC(params: channels.PageRequestWebWorkersGCParams, metadata: CallMetadata): Promise<channels.PageRequestGCResult> {
     await this._page.requestWebWorkersGC();
   }
 

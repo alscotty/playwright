@@ -2026,7 +2026,7 @@ export interface PageChannel extends PageEventTarget, EventTargetChannel {
   goBack(params: PageGoBackParams, metadata?: CallMetadata): Promise<PageGoBackResult>;
   goForward(params: PageGoForwardParams, metadata?: CallMetadata): Promise<PageGoForwardResult>;
   requestGC(params?: PageRequestGCParams, metadata?: CallMetadata): Promise<PageRequestGCResult>;
-  requestWebWorkersGC(params?: PageRequestWorkerGCParams, metadata?: CallMetadata): Promise<PageRequestWorkerGCResult>;
+  requestWebWorkersGC(params?: PageRequestWebWorkersGCParams, metadata?: CallMetadata): Promise<PageRequestWebWorkersGCResult>;
   registerLocatorHandler(params: PageRegisterLocatorHandlerParams, metadata?: CallMetadata): Promise<PageRegisterLocatorHandlerResult>;
   resolveLocatorHandlerNoReply(params: PageResolveLocatorHandlerNoReplyParams, metadata?: CallMetadata): Promise<PageResolveLocatorHandlerNoReplyResult>;
   unregisterLocatorHandler(params: PageUnregisterLocatorHandlerParams, metadata?: CallMetadata): Promise<PageUnregisterLocatorHandlerResult>;
@@ -2173,9 +2173,9 @@ export type PageGoForwardResult = {
 export type PageRequestGCParams = {};
 export type PageRequestGCOptions = {};
 export type PageRequestGCResult = void;
-export type PageRequestWorkerGCParams = {};
-export type PageRequestWorkerGCOptions = {};
-export type PageRequestWorkerGCResult = void;
+export type PageRequestWebWorkersGCParams = {};
+export type PageRequestWebWorkersGCOptions = {};
+export type PageRequestWebWorkersGCResult = void;
 export type PageRegisterLocatorHandlerParams = {
   selector: string,
   noWaitAfter?: boolean,
