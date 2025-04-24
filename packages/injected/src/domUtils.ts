@@ -14,9 +14,16 @@
  * limitations under the License.
  */
 
-let browserNameForWorkarounds = '';
-export function setBrowserName(name: string) {
-  browserNameForWorkarounds = name;
+type GlobalOptions = {
+  browserNameForWorkarounds?: string;
+  inputFileRoleTextbox?: boolean;
+};
+let globalOptions: GlobalOptions = {};
+export function setGlobalOptions(options: GlobalOptions) {
+  globalOptions = options;
+}
+export function getGlobalOptions(): GlobalOptions {
+  return globalOptions;
 }
 
 export function isInsideScope(scope: Node, element: Element | undefined): boolean {
@@ -83,7 +90,7 @@ export function isElementStyleVisibilityVisible(element: Element, style?: CSSSty
   // All the browser implement it, but WebKit has a bug which prevents us from using it:
   // https://bugs.webkit.org/show_bug.cgi?id=264733
   // @ts-ignore
-  if (Element.prototype.checkVisibility && browserNameForWorkarounds !== 'webkit') {
+  if (Element.prototype.checkVisibility && globalOptions.browserNameForWorkarounds !== 'webkit') {
     if (!element.checkVisibility())
       return false;
   } else {
@@ -97,25 +104,35 @@ export function isElementStyleVisibilityVisible(element: Element, style?: CSSSty
   return true;
 }
 
-export function isElementVisible(element: Element): boolean {
+export type Box = {
+  visible: boolean;
+  rect?: DOMRect;
+  style?: CSSStyleDeclaration;
+};
+
+export function box(element: Element): Box {
   // Note: this logic should be similar to waitForDisplayedAtStablePosition() to avoid surprises.
   const style = getElementComputedStyle(element);
   if (!style)
-    return true;
+    return { visible: true };
   if (style.display === 'contents') {
     // display:contents is not rendered itself, but its child nodes are.
     for (let child = element.firstChild; child; child = child.nextSibling) {
       if (child.nodeType === 1 /* Node.ELEMENT_NODE */ && isElementVisible(child as Element))
-        return true;
+        return { visible: true, style };
       if (child.nodeType === 3 /* Node.TEXT_NODE */ && isVisibleTextNode(child as Text))
-        return true;
+        return { visible: true, style };
     }
-    return false;
+    return { visible: false, style };
   }
   if (!isElementStyleVisibilityVisible(element, style))
-    return false;
+    return { style, visible: false };
   const rect = element.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0;
+  return { rect, style, visible: rect.width > 0 && rect.height > 0 };
+}
+
+export function isElementVisible(element: Element): boolean {
+  return box(element).visible;
 }
 
 export function isVisibleTextNode(node: Text) {

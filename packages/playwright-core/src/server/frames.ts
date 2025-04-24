@@ -1411,7 +1411,7 @@ export class Frame extends SdkObject {
     });
   }
 
-  async ariaSnapshot(metadata: CallMetadata, selector: string, options: { ref?: boolean, mode?: 'raw' | 'regex' } & types.TimeoutOptions = {}): Promise<string> {
+  async ariaSnapshot(metadata: CallMetadata, selector: string, options: { ref?: boolean, emitGeneric?: boolean, mode?: 'raw' | 'regex' } & types.TimeoutOptions = {}): Promise<string> {
     const controller = new ProgressController(metadata, this);
     return controller.run(async progress => {
       return await this._retryWithProgressIfNotConnected(progress, selector, true /* strict */, true /* performActionPreChecks */, handle => handle.ariaSnapshot(options));
@@ -1567,9 +1567,9 @@ export class Frame extends SdkObject {
                 return;
               }
               if (typeof polling !== 'number')
-                injected.builtins.requestAnimationFrame(next);
+                injected.utils.builtins.requestAnimationFrame(next);
               else
-                injected.builtins.setTimeout(next, polling);
+                injected.utils.builtins.setTimeout(next, polling);
             } catch (e) {
               reject(e);
             }

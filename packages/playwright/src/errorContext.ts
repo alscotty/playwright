@@ -22,13 +22,25 @@ import { parseErrorStack } from 'playwright-core/lib/utils';
 import { stripAnsiEscapes } from './util';
 import { codeFrameColumns } from './transform/babelBundle';
 
-import type { TestInfo } from '../types/test';
 import type { MetadataWithCommitInfo } from './isomorphic/types';
 import type { TestInfoImpl } from './worker/testInfo';
+import type { Location } from '../types/test';
 
-export async function attachErrorPrompts(testInfo: TestInfo, sourceCache: Map<string, string>, ariaSnapshot: string | undefined) {
-  if (process.env.PLAYWRIGHT_NO_COPY_PROMPT)
+export async function attachErrorContext(testInfo: TestInfoImpl, format: 'markdown' | 'json', sourceCache: Map<string, string>, ariaSnapshot: string | undefined) {
+  if (format === 'json') {
+    if (!ariaSnapshot)
+      return;
+
+    testInfo._attach({
+      name: `_error-context`,
+      contentType: 'application/json',
+      body: Buffer.from(JSON.stringify({
+        pageSnapshot: ariaSnapshot,
+      })),
+    }, undefined);
+
     return;
+  }
 
   const meaningfulSingleLineErrors = new Set(testInfo.errors.filter(e => e.message && !e.message.includes('\n')).map(e => e.message!));
   for (const error of testInfo.errors) {
@@ -51,16 +63,10 @@ export async function attachErrorPrompts(testInfo: TestInfo, sourceCache: Map<st
 
   for (const [index, error] of errors) {
     const metadata = testInfo.config.metadata as MetadataWithCommitInfo;
-    if (testInfo.attachments.find(a => a.name === `_prompt-${index}`))
+    if (testInfo.attachments.find(a => a.name === `_error-context-${index}`))
       continue;
 
-    const promptParts = [
-      `# Instructions`,
-      '',
-      `- Following Playwright test failed.`,
-      `- Explain why, be concise, respect Playwright best practices.`,
-      `- Provide a snippet of code with the fix, if possible.`,
-      '',
+    const lines = [
       `# Test info`,
       '',
       `- Name: ${testInfo.titlePath.slice(1).join(' >> ')}`,
@@ -74,7 +80,7 @@ export async function attachErrorPrompts(testInfo: TestInfo, sourceCache: Map<st
     ];
 
     if (ariaSnapshot) {
-      promptParts.push(
+      lines.push(
           '',
           '# Page snapshot',
           '',
@@ -86,34 +92,35 @@ export async function attachErrorPrompts(testInfo: TestInfo, sourceCache: Map<st
 
     const parsedError = error.stack ? parseErrorStack(error.stack, path.sep) : undefined;
     const inlineMessage = stripAnsiEscapes(parsedError?.message || error.message || '').split('\n')[0];
-    const location = parsedError?.location || { file: testInfo.file, line: testInfo.line, column: testInfo.column };
-    const source = await loadSource(location.file, sourceCache);
-    const codeFrame = codeFrameColumns(
-        source,
-        {
-          start: {
-            line: location.line,
-            column: location.column
+    const loadedSource = await loadSource(parsedError?.location, testInfo, sourceCache);
+    if (loadedSource) {
+      const codeFrame = codeFrameColumns(
+          loadedSource.source,
+          {
+            start: {
+              line: loadedSource.location.line,
+              column: loadedSource.location.column
+            },
           },
-        },
-        {
-          highlightCode: false,
-          linesAbove: 100,
-          linesBelow: 100,
-          message: inlineMessage || undefined,
-        }
-    );
-    promptParts.push(
-        '',
-        '# Test source',
-        '',
-        '```ts',
-        codeFrame,
-        '```',
-    );
+          {
+            highlightCode: false,
+            linesAbove: 100,
+            linesBelow: 100,
+            message: inlineMessage || undefined,
+          }
+      );
+      lines.push(
+          '',
+          '# Test source',
+          '',
+          '```ts',
+          codeFrame,
+          '```',
+      );
+    }
 
     if (metadata.gitDiff) {
-      promptParts.push(
+      lines.push(
           '',
           '# Local changes',
           '',
@@ -123,36 +130,44 @@ export async function attachErrorPrompts(testInfo: TestInfo, sourceCache: Map<st
       );
     }
 
-    const promptPath = testInfo.outputPath(errors.length === 1 ? `prompt.md` : `prompt-${index}.md`);
-    await fs.writeFile(promptPath, promptParts.join('\n'), 'utf8');
+    const filePath = testInfo.outputPath(errors.length === 1 ? `error-context.md` : `error-context-${index}.md`);
+    await fs.writeFile(filePath, lines.join('\n'), 'utf8');
 
     (testInfo as TestInfoImpl)._attach({
-      name: `_prompt-${index}`,
+      name: `_error-context-${index}`,
       contentType: 'text/markdown',
-      path: promptPath,
+      path: filePath,
     }, undefined);
   }
 }
 
-export async function attachErrorContext(testInfo: TestInfo, ariaSnapshot: string | undefined) {
-  if (!ariaSnapshot)
-    return;
-
-  (testInfo as TestInfoImpl)._attach({
-    name: `_error-context`,
-    contentType: 'application/json',
-    body: Buffer.from(JSON.stringify({
-      pageSnapshot: ariaSnapshot,
-    })),
-  }, undefined);
+async function loadSource(
+  errorLocation: Location | undefined,
+  testLocation: Location,
+  sourceCache: Map<string, string>
+): Promise<{ location: Location, source: string } | undefined> {
+  if (errorLocation) {
+    const source = await loadSourceCached(errorLocation.file, sourceCache);
+    if (source)
+      return { location: errorLocation, source };
+  }
+  // If the error location is not available on the disk (e.g. fake page.evaluate in-browser error), then fallback to the test file.
+  const source = await loadSourceCached(testLocation.file, sourceCache);
+  if (source)
+    return { location: testLocation, source };
+  return undefined;
 }
 
-async function loadSource(file: string, sourceCache: Map<string, string>) {
+async function loadSourceCached(file: string, sourceCache: Map<string, string>): Promise<string | undefined> {
   let source = sourceCache.get(file);
   if (!source) {
-    // A mild race is Ok here.
-    source = await fs.readFile(file, 'utf8');
-    sourceCache.set(file, source);
+    try {
+      // A mild race is Ok here.
+      source = await fs.readFile(file, 'utf8');
+      sourceCache.set(file, source);
+    } catch (e) {
+      // Ignore errors.
+    }
   }
   return source;
 }

@@ -28,7 +28,7 @@ import { mkdirIfNeeded } from './utils/fileUtils';
 import { HarRecorder } from './har/harRecorder';
 import { helper } from './helper';
 import { SdkObject, serverSideCallMetadata } from './instrumentation';
-import { ensureBuiltins } from '../utils/isomorphic/builtins';
+import { builtins } from '../utils/isomorphic/builtins';
 import * as utilityScriptSerializers from '../utils/isomorphic/utilityScriptSerializers';
 import * as network from './network';
 import { InitScript } from './page';
@@ -36,7 +36,6 @@ import { Page, PageBinding } from './page';
 import { Recorder } from './recorder';
 import { RecorderApp } from './recorder/recorderApp';
 import * as storageScript from './storageScript';
-import * as consoleApiSource from '../generated/consoleApiSource';
 import { Tracing } from './trace/recorder/tracing';
 
 import type { Artifact } from './artifact';
@@ -148,7 +147,7 @@ export abstract class BrowserContext extends SdkObject {
     });
 
     if (debugMode() === 'console')
-      await this.extendInjectedScript(consoleApiSource.source);
+      await this.extendInjectedScript('function Console(injectedScript) { injectedScript.consoleApi.install(); }');
     if (this._options.serviceWorkers === 'block')
       await this.addInitScript(`\nif (navigator.serviceWorker) navigator.serviceWorker.register = async () => { console.warn('Service Worker registration blocked by Playwright'); };\n`);
 
@@ -519,7 +518,7 @@ export abstract class BrowserContext extends SdkObject {
     };
     const originsToSave = new Set(this._origins);
 
-    const collectScript = `(${storageScript.collect})(${utilityScriptSerializers.source}, (${ensureBuiltins})(globalThis), ${this._browser.options.name === 'firefox'}, ${indexedDB})`;
+    const collectScript = `(${storageScript.collect})(${utilityScriptSerializers.source}, (${builtins})(), ${this._browser.options.name === 'firefox'}, ${indexedDB})`;
 
     // First try collecting storage stage from existing pages.
     for (const page of this.pages()) {
@@ -612,7 +611,7 @@ export abstract class BrowserContext extends SdkObject {
         for (const originState of state.origins) {
           const frame = page.mainFrame();
           await frame.goto(metadata, originState.origin);
-          await frame.evaluateExpression(`(${storageScript.restore})(${utilityScriptSerializers.source}, (${ensureBuiltins})(globalThis), ${JSON.stringify(originState)})`, { world: 'utility' });
+          await frame.evaluateExpression(`(${storageScript.restore})(${utilityScriptSerializers.source}, (${builtins})(), ${JSON.stringify(originState)})`, { world: 'utility' });
         }
         await page.close(internalMetadata);
       }
@@ -703,7 +702,7 @@ export function validateBrowserContextOptions(options: types.BrowserContextOptio
   verifyGeolocation(options.geolocation);
 }
 
-export function verifyGeolocation(geolocation?: types.Geolocation) {
+export function verifyGeolocation(geolocation?: types.Geolocation): asserts geolocation is types.Geolocation {
   if (!geolocation)
     return;
   geolocation.accuracy = geolocation.accuracy || 0;
