@@ -191,19 +191,29 @@ test('requestWebWorkersGC should garbage collect all weakrefs', async ({ page, m
   globalThis.weakRefs = [];
   globalThis.createWeakRefs = (elements) => {
     for (const element of elements) {
-      globalThis.weakRefs.push(new WeakRef(element));
+      globalThis.weakRefs.push(new WeakRef(Object(element)));
     }
   };
+  globalThis.createWeakRefs([1,2,3])
   globalThis.countWeakRefs = () => globalThis.weakRefs.filter(r => !!r.deref()).length;
-  console.log(globalThis.weakRefs);
+  console.log("New weakrefs:", globalThis.weakRefs);
 `], { type: 'application/javascript' }))));
   const worker = await workerCreatedPromise;
 
   const hasCreateWeakRefs = await worker.evaluate(() => {
-    console.log({ globalThis })
     return typeof globalThis.createWeakRefs === 'function';
   });
+  async function getWeakRefCount() {
+    return await worker.evaluate(() => {
+      console.log(globalThis.weakRefs)
+      console.log(globalThis.weakRefs.length);
+      return globalThis.countWeakRefs();
+    });
+  }
   expect(hasCreateWeakRefs).toBe(true);
-  // await page._delegate.requestWebWorkersGC();
+  let countBeforeDeletion = await getWeakRefCount();
+  expect(countBeforeDeletion).toBe(3);
   await page.requestWebWorkersGC();
+  let countAfterDeletion = await getWeakRefCount();
+  expect(countAfterDeletion).toBe(0);
 })

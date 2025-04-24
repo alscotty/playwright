@@ -448,14 +448,34 @@ export class Page extends SdkObject {
   }
 
   async requestWebWorkersGC(): Promise<void> {
-    let workers = this._workers;
-    console.log({ workers });
+    const workers = this._workers;
+    // console.log("IN FXN, workers:")
+    // console.log(workers)
+    await Promise.all(Array.from(workers.values()).map(async worker => {
+      try {
+        await worker._existingExecutionContext?.rawEvaluateHandle(`() => {
+          if (globalThis.weakRefs) {
+            // Dereference all WeakRefs to ensure they are no longer holding references.
+            globalThis.weakRefs.forEach(ref => ref.deref());
+            // Clear the weakRefs array to remove all references.
+            globalThis.weakRefs = [];
+          }
+        }`);
+        console.log(`WeakRefs cleared for worker: ${worker.url()}`);
+      } catch (error) {
+        console.error(`Failed to clear WeakRefs for worker: ${worker.url()}`, error);
+      }
+    }));
+    // let workers = this._workers;
+    // console.log({ workers });
     
-    for (let worker of workers) {
-      await worker[1]._existingExecutionContext?.rawEvaluateHandle(`() => {
-        if (globalThis.gc) globalThis.gc();
-      }`);
-    }
+    // for (let worker of workers) {
+    //   console.log('starting deletion of weakrefs')
+    //   await worker[1]._existingExecutionContext?.rawEvaluateHandle(`() => {
+    //     if (globalThis.weakRefs) delete globalThis.weakRefs;
+    //     console.log(globalThis.weakRefs)
+    //   }`);
+    // }
   }
 
   registerLocatorHandler(selector: string, noWaitAfter: boolean | undefined) {
