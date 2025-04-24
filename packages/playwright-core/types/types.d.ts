@@ -3915,6 +3915,17 @@ export interface Page {
   requestGC(): Promise<void>;
 
   /**
+   * Request the page to perform garbage collection on all worker's weakrefs
+   *
+   * ```js
+   * //  Docs TBD
+   * await page.requestWebWorkersGC();
+   * ```
+   *
+   */
+  requestWebWorkersGC(): Promise<void>;
+
+  /**
    * Routing provides the capability to modify network requests that are made by a page.
    *
    * Once routing is enabled, every request matching the url pattern will stall unless it's continued, fulfilled or

@@ -2352,7 +2352,7 @@ await page.requestGC();
 // 3. Check that weak ref does not deref to the original object.
 expect(await page.evaluate(() => !globalThis.suspectWeakRef.deref())).toBe(true);
 ```
-## async method: Page.requestGC
+## async method: Page.requestWebWorkersGC
 * since: v_TBD
 
 Request the page to perform garbage collection on all worker's weakrefs
