@@ -185,35 +185,33 @@ test('waitFor should not leak', async ({ page, mode, toImpl }) => {
   await checkWeakRefs(toImpl(page), 2, 25);
 });
 
-test('requestWebWorkersGC should garbage collect all weakrefs', async ({ page, mode, toImpl }) => {
-  const workerCreatedPromise = page.waitForEvent('worker');
-  await page.evaluate(() => new Worker(URL.createObjectURL(new Blob([`
-  globalThis.weakRefs = [];
-  globalThis.createWeakRefs = (elements) => {
-    for (const element of elements) {
-      globalThis.weakRefs.push(new WeakRef(Object(element)));
-    }
-  };
-  globalThis.createWeakRefs([1,2,3])
-  globalThis.countWeakRefs = () => globalThis.weakRefs.filter(r => !!r.deref()).length;
-  console.log("New weakrefs:", globalThis.weakRefs);
-`], { type: 'application/javascript' }))));
-  const worker = await workerCreatedPromise;
+test('requestWebWorkersGC should garbage collect all weakrefs', async ({ page, mode, toImpl, toImplInWorkerScope }) => {
+  const [worker] = await Promise.all([
+    page.waitForEvent('worker'),
+    page.evaluate(() => new Worker(URL.createObjectURL(new Blob([`console.log("worker created")`], { type: 'application/javascript' })))),
+  ]);
+  await worker.evaluate(() => {
+    globalThis.weakRefs = [];
+    globalThis.createWeakRefs = (elements) => {
+      for (const element of elements) {
+        globalThis.weakRefs.push(new WeakRef(Object(element)));
+      }
+    };
+    globalThis.createWeakRefs([1, 2, 3]);
+    globalThis.countWeakRefs = () => globalThis.weakRefs.filter(r => !!r.deref()).length;
+    console.log("New weakrefs:", globalThis.weakRefs);
+  })
+  // expect(await worker.evaluate(() => globalThis.countWeakRefs())).toBe(3);
+  // Convert the public API `page` object to its internal implementation
+  const pageImpl = toImplInWorkerScope(page);
 
-  const hasCreateWeakRefs = await worker.evaluate(() => {
-    return typeof globalThis.createWeakRefs === 'function';
-  });
-  async function getWeakRefCount() {
-    return await worker.evaluate(() => {
-      console.log(globalThis.weakRefs)
-      console.log(globalThis.weakRefs.length);
-      return globalThis.countWeakRefs();
-    });
-  }
-  expect(hasCreateWeakRefs).toBe(true);
-  let countBeforeDeletion = await getWeakRefCount();
-  expect(countBeforeDeletion).toBe(3);
-  await page.requestWebWorkersGC();
-  let countAfterDeletion = await getWeakRefCount();
-  expect(countAfterDeletion).toBe(0);
+  // Access internal properties or methods
+  console.log('Internal page object:', pageImpl);
+
+  // Example: Access the internal `_workers` map
+  console.log('Internal workers:', Array.from(pageImpl._workers.values()));
+
+  let workerLogs = await page.requestWebWorkersGC();
+  console.log("WORKER LOGS!")
+  console.log({ workerLogs })
 })

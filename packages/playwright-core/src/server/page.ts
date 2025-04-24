@@ -87,7 +87,7 @@ export interface PageDelegate {
   scrollRectIntoViewIfNeeded(handle: dom.ElementHandle, rect?: types.Rect): Promise<'error:notvisible' | 'error:notconnected' | 'done'>;
   setScreencastOptions(options: { width: number, height: number, quality: number } | null): Promise<void>;
 
-  getAccessibilityTree(needle?: dom.ElementHandle): Promise<{tree: accessibility.AXNode, needle: accessibility.AXNode | null}>;
+  getAccessibilityTree(needle?: dom.ElementHandle): Promise<{ tree: accessibility.AXNode, needle: accessibility.AXNode | null }>;
   pdf?: (options: channels.PagePdfParams) => Promise<Buffer>;
   coverage?: () => any;
 
@@ -354,7 +354,7 @@ export class Page extends SdkObject {
     const binding = new PageBinding(name, playwrightBinding, needsHandle);
     this._pageBindings.set(name, binding);
     await this._delegate.addInitScript(binding.initScript);
-    await Promise.all(this.frames().map(frame => frame.evaluateExpression(binding.initScript.source).catch(e => {})));
+    await Promise.all(this.frames().map(frame => frame.evaluateExpression(binding.initScript.source).catch(e => { })));
   }
 
   async _removeExposedBindings() {
@@ -447,402 +447,402 @@ export class Page extends SdkObject {
     return this._delegate.requestGC();
   }
 
-  async requestWebWorkersGC(): Promise<void> {
-    const workers = this._workers;
-    // console.log("IN FXN, workers:")
-    // console.log(workers)
-    await Promise.all(Array.from(workers.values()).map(async worker => {
+  async requestWebWorkersGC(): Promise<any> {
+  // async requestWebWorkersGC(): Promise<void> {
+    console.log('Current workers:', Array.from(this._workers.values())); // Debug log
+
+    // If _workers is empty, synchronize with client-side workers
+    if (this._workers.size === 0) {
+      console.warn('No workers in _workers map. Synchronizing with client-side workers...');
+      for (const page of this.context().pages()) {
+        for (const worker of page._workers.values()) {
+        const workerId = worker.url(); // Use the worker's URL or another unique identifier
+        this._addWorker(workerId, worker);
+      }
+    }
+
+    return this._workers;
+    await Promise.all(Array.from(this._workers.values()).map(async worker => {
       try {
         await worker._existingExecutionContext?.rawEvaluateHandle(`() => {
-          if (globalThis.weakRefs) {
-            // Dereference all WeakRefs to ensure they are no longer holding references.
-            globalThis.weakRefs.forEach(ref => ref.deref());
-            // Clear the weakRefs array to remove all references.
-            globalThis.weakRefs = [];
-          }
-        }`);
+            if (globalThis.weakRefs) {
+              globalThis.weakRefs.forEach(ref => ref.deref());
+              globalThis.weakRefs = [];
+            }
+          }`);
         console.log(`WeakRefs cleared for worker: ${worker.url()}`);
       } catch (error) {
         console.error(`Failed to clear WeakRefs for worker: ${worker.url()}`, error);
       }
     }));
-    // let workers = this._workers;
-    // console.log({ workers });
-    
-    // for (let worker of workers) {
-    //   console.log('starting deletion of weakrefs')
-    //   await worker[1]._existingExecutionContext?.rawEvaluateHandle(`() => {
-    //     if (globalThis.weakRefs) delete globalThis.weakRefs;
-    //     console.log(globalThis.weakRefs)
-    //   }`);
-    // }
   }
+}
 
-  registerLocatorHandler(selector: string, noWaitAfter: boolean | undefined) {
-    const uid = ++this._lastLocatorHandlerUid;
-    this._locatorHandlers.set(uid, { selector, noWaitAfter });
-    return uid;
-  }
+registerLocatorHandler(selector: string, noWaitAfter: boolean | undefined) {
+  const uid = ++this._lastLocatorHandlerUid;
+  this._locatorHandlers.set(uid, { selector, noWaitAfter });
+  return uid;
+}
 
-  resolveLocatorHandler(uid: number, remove: boolean | undefined) {
-    const handler = this._locatorHandlers.get(uid);
-    if (remove)
-      this._locatorHandlers.delete(uid);
-    if (handler) {
-      handler.resolved?.resolve();
-      handler.resolved = undefined;
-    }
-  }
-
-  unregisterLocatorHandler(uid: number) {
+resolveLocatorHandler(uid: number, remove: boolean | undefined) {
+  const handler = this._locatorHandlers.get(uid);
+  if (remove)
     this._locatorHandlers.delete(uid);
+  if (handler) {
+    handler.resolved?.resolve();
+    handler.resolved = undefined;
   }
+}
+
+unregisterLocatorHandler(uid: number) {
+  this._locatorHandlers.delete(uid);
+}
 
   async performActionPreChecks(progress: Progress) {
-    await this._performWaitForNavigationCheck(progress);
-    progress.throwIfAborted();
-    await this._performLocatorHandlersCheckpoint(progress);
-    progress.throwIfAborted();
-    // Wait once again, just in case a locator handler caused a navigation.
-    await this._performWaitForNavigationCheck(progress);
-  }
+  await this._performWaitForNavigationCheck(progress);
+  progress.throwIfAborted();
+  await this._performLocatorHandlersCheckpoint(progress);
+  progress.throwIfAborted();
+  // Wait once again, just in case a locator handler caused a navigation.
+  await this._performWaitForNavigationCheck(progress);
+}
 
   private async _performWaitForNavigationCheck(progress: Progress) {
-    if (process.env.PLAYWRIGHT_SKIP_NAVIGATION_CHECK)
-      return;
-    const mainFrame = this._frameManager.mainFrame();
-    if (!mainFrame || !mainFrame.pendingDocument())
-      return;
-    const url = mainFrame.pendingDocument()?.request?.url();
-    const toUrl = url ? `" ${trimStringWithEllipsis(url, 200)}"` : '';
-    progress.log(`  waiting for${toUrl} navigation to finish...`);
-    await helper.waitForEvent(progress, mainFrame, frames.Frame.Events.InternalNavigation, (e: frames.NavigationEvent) => {
-      if (!e.isPublic)
-        return false;
-      if (!e.error)
-        progress.log(`  navigated to "${trimStringWithEllipsis(mainFrame.url(), 200)}"`);
-      return true;
-    }).promise;
-  }
+  if (process.env.PLAYWRIGHT_SKIP_NAVIGATION_CHECK)
+    return;
+  const mainFrame = this._frameManager.mainFrame();
+  if (!mainFrame || !mainFrame.pendingDocument())
+    return;
+  const url = mainFrame.pendingDocument()?.request?.url();
+  const toUrl = url ? `" ${trimStringWithEllipsis(url, 200)}"` : '';
+  progress.log(`  waiting for${toUrl} navigation to finish...`);
+  await helper.waitForEvent(progress, mainFrame, frames.Frame.Events.InternalNavigation, (e: frames.NavigationEvent) => {
+    if (!e.isPublic)
+      return false;
+    if (!e.error)
+      progress.log(`  navigated to "${trimStringWithEllipsis(mainFrame.url(), 200)}"`);
+    return true;
+  }).promise;
+}
 
   private async _performLocatorHandlersCheckpoint(progress: Progress) {
-    // Do not run locator handlers from inside locator handler callbacks to avoid deadlocks.
-    if (this._locatorHandlerRunningCounter)
-      return;
-    for (const [uid, handler] of this._locatorHandlers) {
-      if (!handler.resolved) {
-        if (await this.mainFrame().isVisibleInternal(handler.selector, { strict: true })) {
-          handler.resolved = new ManualPromise();
-          this.emit(Page.Events.LocatorHandlerTriggered, uid);
-        }
-      }
-      if (handler.resolved) {
-        ++this._locatorHandlerRunningCounter;
-        progress.log(`  found ${asLocator(this.attribution.playwright.options.sdkLanguage, handler.selector)}, intercepting action to run the handler`);
-        const promise = handler.resolved.then(async () => {
-          progress.throwIfAborted();
-          if (!handler.noWaitAfter) {
-            progress.log(`  locator handler has finished, waiting for ${asLocator(this.attribution.playwright.options.sdkLanguage, handler.selector)} to be hidden`);
-            await this.mainFrame().waitForSelectorInternal(progress, handler.selector, false, { state: 'hidden' });
-          } else {
-            progress.log(`  locator handler has finished`);
-          }
-        });
-        await this.openScope.race(promise).finally(() => --this._locatorHandlerRunningCounter);
-        // Avoid side-effects after long-running operation.
-        progress.throwIfAborted();
-        progress.log(`  interception handler has finished, continuing`);
+  // Do not run locator handlers from inside locator handler callbacks to avoid deadlocks.
+  if (this._locatorHandlerRunningCounter)
+    return;
+  for (const [uid, handler] of this._locatorHandlers) {
+    if (!handler.resolved) {
+      if (await this.mainFrame().isVisibleInternal(handler.selector, { strict: true })) {
+        handler.resolved = new ManualPromise();
+        this.emit(Page.Events.LocatorHandlerTriggered, uid);
       }
     }
+    if (handler.resolved) {
+      ++this._locatorHandlerRunningCounter;
+      progress.log(`  found ${asLocator(this.attribution.playwright.options.sdkLanguage, handler.selector)}, intercepting action to run the handler`);
+      const promise = handler.resolved.then(async () => {
+        progress.throwIfAborted();
+        if (!handler.noWaitAfter) {
+          progress.log(`  locator handler has finished, waiting for ${asLocator(this.attribution.playwright.options.sdkLanguage, handler.selector)} to be hidden`);
+          await this.mainFrame().waitForSelectorInternal(progress, handler.selector, false, { state: 'hidden' });
+        } else {
+          progress.log(`  locator handler has finished`);
+        }
+      });
+      await this.openScope.race(promise).finally(() => --this._locatorHandlerRunningCounter);
+      // Avoid side-effects after long-running operation.
+      progress.throwIfAborted();
+      progress.log(`  interception handler has finished, continuing`);
+    }
   }
+}
 
   async emulateMedia(options: Partial<EmulatedMedia>) {
-    if (options.media !== undefined)
-      this._emulatedMedia.media = options.media;
-    if (options.colorScheme !== undefined)
-      this._emulatedMedia.colorScheme = options.colorScheme;
-    if (options.reducedMotion !== undefined)
-      this._emulatedMedia.reducedMotion = options.reducedMotion;
-    if (options.forcedColors !== undefined)
-      this._emulatedMedia.forcedColors = options.forcedColors;
-    if (options.contrast !== undefined)
-      this._emulatedMedia.contrast = options.contrast;
+  if (options.media !== undefined)
+    this._emulatedMedia.media = options.media;
+  if (options.colorScheme !== undefined)
+    this._emulatedMedia.colorScheme = options.colorScheme;
+  if (options.reducedMotion !== undefined)
+    this._emulatedMedia.reducedMotion = options.reducedMotion;
+  if (options.forcedColors !== undefined)
+    this._emulatedMedia.forcedColors = options.forcedColors;
+  if (options.contrast !== undefined)
+    this._emulatedMedia.contrast = options.contrast;
 
-    await this._delegate.updateEmulateMedia();
-  }
+  await this._delegate.updateEmulateMedia();
+}
 
-  emulatedMedia(): EmulatedMedia {
-    const contextOptions = this._browserContext._options;
-    return {
-      media: this._emulatedMedia.media || 'no-override',
-      colorScheme: this._emulatedMedia.colorScheme !== undefined ? this._emulatedMedia.colorScheme : contextOptions.colorScheme ?? 'light',
-      reducedMotion: this._emulatedMedia.reducedMotion !== undefined ? this._emulatedMedia.reducedMotion : contextOptions.reducedMotion ?? 'no-preference',
-      forcedColors: this._emulatedMedia.forcedColors !== undefined ? this._emulatedMedia.forcedColors : contextOptions.forcedColors ?? 'none',
-      contrast: this._emulatedMedia.contrast !== undefined ? this._emulatedMedia.contrast : contextOptions.contrast ?? 'no-preference',
-    };
-  }
+emulatedMedia(): EmulatedMedia {
+  const contextOptions = this._browserContext._options;
+  return {
+    media: this._emulatedMedia.media || 'no-override',
+    colorScheme: this._emulatedMedia.colorScheme !== undefined ? this._emulatedMedia.colorScheme : contextOptions.colorScheme ?? 'light',
+    reducedMotion: this._emulatedMedia.reducedMotion !== undefined ? this._emulatedMedia.reducedMotion : contextOptions.reducedMotion ?? 'no-preference',
+    forcedColors: this._emulatedMedia.forcedColors !== undefined ? this._emulatedMedia.forcedColors : contextOptions.forcedColors ?? 'none',
+    contrast: this._emulatedMedia.contrast !== undefined ? this._emulatedMedia.contrast : contextOptions.contrast ?? 'no-preference',
+  };
+}
 
   async setViewportSize(viewportSize: types.Size) {
-    this._emulatedSize = { viewport: { ...viewportSize }, screen: { ...viewportSize } };
-    await this._delegate.updateEmulatedViewportSize();
-  }
+  this._emulatedSize = { viewport: { ...viewportSize }, screen: { ...viewportSize } };
+  await this._delegate.updateEmulatedViewportSize();
+}
 
-  viewportSize(): types.Size | null {
-    return this.emulatedSize()?.viewport || null;
-  }
+viewportSize(): types.Size | null {
+  return this.emulatedSize()?.viewport || null;
+}
 
-  emulatedSize(): EmulatedSize | null {
-    if (this._emulatedSize)
-      return this._emulatedSize;
-    const contextOptions = this._browserContext._options;
-    return contextOptions.viewport ? { viewport: contextOptions.viewport, screen: contextOptions.screen || contextOptions.viewport } : null;
-  }
+emulatedSize(): EmulatedSize | null {
+  if (this._emulatedSize)
+    return this._emulatedSize;
+  const contextOptions = this._browserContext._options;
+  return contextOptions.viewport ? { viewport: contextOptions.viewport, screen: contextOptions.screen || contextOptions.viewport } : null;
+}
 
-  async bringToFront(): Promise<void> {
-    await this._delegate.bringToFront();
-  }
+  async bringToFront(): Promise < void> {
+  await this._delegate.bringToFront();
+}
 
-  async addInitScript(source: string, name?: string) {
-    const initScript = new InitScript(source, false /* internal */, name);
-    this.initScripts.push(initScript);
-    await this._delegate.addInitScript(initScript);
-  }
+  async addInitScript(source: string, name ?: string) {
+  const initScript = new InitScript(source, false /* internal */, name);
+  this.initScripts.push(initScript);
+  await this._delegate.addInitScript(initScript);
+}
 
   async _removeInitScripts() {
-    this.initScripts = this.initScripts.filter(script => script.internal);
-    await this._delegate.removeNonInternalInitScripts();
-  }
+  this.initScripts = this.initScripts.filter(script => script.internal);
+  await this._delegate.removeNonInternalInitScripts();
+}
 
-  needsRequestInterception(): boolean {
-    return !!this._clientRequestInterceptor || !!this._serverRequestInterceptor || !!this._browserContext._requestInterceptor;
-  }
+needsRequestInterception(): boolean {
+  return !!this._clientRequestInterceptor || !!this._serverRequestInterceptor || !!this._browserContext._requestInterceptor;
+}
 
-  async setClientRequestInterceptor(handler: network.RouteHandler | undefined): Promise<void> {
-    this._clientRequestInterceptor = handler;
-    await this._delegate.updateRequestInterception();
-  }
+  async setClientRequestInterceptor(handler: network.RouteHandler | undefined): Promise < void> {
+  this._clientRequestInterceptor = handler;
+  await this._delegate.updateRequestInterception();
+}
 
-  async _setServerRequestInterceptor(handler: network.RouteHandler | undefined): Promise<void> {
-    this._serverRequestInterceptor = handler;
-    await this._delegate.updateRequestInterception();
-  }
+  async _setServerRequestInterceptor(handler: network.RouteHandler | undefined): Promise < void> {
+  this._serverRequestInterceptor = handler;
+  await this._delegate.updateRequestInterception();
+}
 
-  async expectScreenshot(metadata: CallMetadata, options: ExpectScreenshotOptions = {}): Promise<{ actual?: Buffer, previous?: Buffer, diff?: Buffer, errorMessage?: string, log?: string[] }> {
-    const locator = options.locator;
-    const rafrafScreenshot = locator ? async (progress: Progress, timeout: number) => {
-      return await locator.frame.rafrafTimeoutScreenshotElementWithProgress(progress, locator.selector, timeout, options || {});
-    } : async (progress: Progress, timeout: number) => {
-      await this.performActionPreChecks(progress);
-      await this.mainFrame().rafrafTimeout(timeout);
-      return await this._screenshotter.screenshotPage(progress, options || {});
-    };
+  async expectScreenshot(metadata: CallMetadata, options: ExpectScreenshotOptions = {}): Promise < { actual?: Buffer, previous?: Buffer, diff?: Buffer, errorMessage?: string, log?: string[] } > {
+  const locator = options.locator;
+  const rafrafScreenshot = locator ? async (progress: Progress, timeout: number) => {
+    return await locator.frame.rafrafTimeoutScreenshotElementWithProgress(progress, locator.selector, timeout, options || {});
+  } : async (progress: Progress, timeout: number) => {
+    await this.performActionPreChecks(progress);
+    await this.mainFrame().rafrafTimeout(timeout);
+    return await this._screenshotter.screenshotPage(progress, options || {});
+  };
 
-    const comparator = getComparator('image/png');
-    const controller = new ProgressController(metadata, this);
-    if (!options.expected && options.isNot)
-      return { errorMessage: '"not" matcher requires expected result' };
-    try {
-      const format = validateScreenshotOptions(options || {});
-      if (format !== 'png')
-        throw new Error('Only PNG screenshots are supported');
-    } catch (error) {
-      return { errorMessage: error.message };
-    }
-    let intermediateResult: {
-      actual?: Buffer,
-      previous?: Buffer,
-      errorMessage: string,
-      diff?: Buffer,
-    } | undefined = undefined;
-    const areEqualScreenshots = (actual: Buffer | undefined, expected: Buffer | undefined, previous: Buffer | undefined) => {
-      const comparatorResult = actual && expected ? comparator(actual, expected, options) : undefined;
-      if (comparatorResult !== undefined && !!comparatorResult === !!options.isNot)
-        return true;
-      if (comparatorResult)
-        intermediateResult = { errorMessage: comparatorResult.errorMessage, diff: comparatorResult.diff, actual, previous };
-      return false;
-    };
-    const callTimeout = this._timeoutSettings.timeout(options);
-    return controller.run(async progress => {
-      let actual: Buffer | undefined;
-      let previous: Buffer | undefined;
-      const pollIntervals = [0, 100, 250, 500];
-      progress.log(`${metadata.apiName}${callTimeout ? ` with timeout ${callTimeout}ms` : ''}`);
-      if (options.expected)
-        progress.log(`  verifying given screenshot expectation`);
-      else
-        progress.log(`  generating new stable screenshot expectation`);
-      let isFirstIteration = true;
-      while (true) {
-        progress.throwIfAborted();
-        if (this.isClosed())
-          throw new Error('The page has closed');
-        const screenshotTimeout = pollIntervals.shift() ?? 1000;
-        if (screenshotTimeout)
-          progress.log(`waiting ${screenshotTimeout}ms before taking screenshot`);
-        previous = actual;
-        actual = await rafrafScreenshot(progress, screenshotTimeout).catch(e => {
-          progress.log(`failed to take screenshot - ` + e.message);
-          return undefined;
-        });
-        if (!actual)
-          continue;
-        // Compare against expectation for the first iteration.
-        const expectation = options.expected && isFirstIteration ? options.expected : previous;
-        if (areEqualScreenshots(actual, expectation, previous))
-          break;
-        if (intermediateResult)
-          progress.log(intermediateResult.errorMessage);
-        isFirstIteration = false;
-      }
-
-      if (!isFirstIteration)
-        progress.log(`captured a stable screenshot`);
-
-      if (!options.expected)
-        return { actual };
-
-      if (isFirstIteration) {
-        progress.log(`screenshot matched expectation`);
-        return {};
-      }
-
-      if (areEqualScreenshots(actual, options.expected, undefined)) {
-        progress.log(`screenshot matched expectation`);
-        return {};
-      }
-      throw new Error(intermediateResult!.errorMessage);
-    }, callTimeout).catch(e => {
-      // Q: Why not throw upon isSessionClosedError(e) as in other places?
-      // A: We want user to receive a friendly diff between actual and expected/previous.
-      if (js.isJavaScriptErrorInEvaluate(e) || isInvalidSelectorError(e))
-        throw e;
-      let errorMessage = e.message;
-      if (e instanceof TimeoutError && intermediateResult?.previous)
-        errorMessage = `Failed to take two consecutive stable screenshots.`;
-      return {
-        log: compressCallLog(e.message ? [...metadata.log, e.message] : metadata.log),
-        ...intermediateResult,
-        errorMessage,
-        timedOut: (e instanceof TimeoutError),
-      };
+  const comparator = getComparator('image/png');
+  const controller = new ProgressController(metadata, this);
+  if(!options.expected && options.isNot)
+  return { errorMessage: '"not" matcher requires expected result' };
+  try {
+    const format = validateScreenshotOptions(options || {});
+    if(format !== 'png')
+  throw new Error('Only PNG screenshots are supported');
+} catch (error) {
+  return { errorMessage: error.message };
+}
+let intermediateResult: {
+  actual?: Buffer,
+  previous?: Buffer,
+  errorMessage: string,
+  diff?: Buffer,
+} | undefined = undefined;
+const areEqualScreenshots = (actual: Buffer | undefined, expected: Buffer | undefined, previous: Buffer | undefined) => {
+  const comparatorResult = actual && expected ? comparator(actual, expected, options) : undefined;
+  if (comparatorResult !== undefined && !!comparatorResult === !!options.isNot)
+    return true;
+  if (comparatorResult)
+    intermediateResult = { errorMessage: comparatorResult.errorMessage, diff: comparatorResult.diff, actual, previous };
+  return false;
+};
+const callTimeout = this._timeoutSettings.timeout(options);
+return controller.run(async progress => {
+  let actual: Buffer | undefined;
+  let previous: Buffer | undefined;
+  const pollIntervals = [0, 100, 250, 500];
+  progress.log(`${metadata.apiName}${callTimeout ? ` with timeout ${callTimeout}ms` : ''}`);
+  if (options.expected)
+    progress.log(`  verifying given screenshot expectation`);
+  else
+    progress.log(`  generating new stable screenshot expectation`);
+  let isFirstIteration = true;
+  while (true) {
+    progress.throwIfAborted();
+    if (this.isClosed())
+      throw new Error('The page has closed');
+    const screenshotTimeout = pollIntervals.shift() ?? 1000;
+    if (screenshotTimeout)
+      progress.log(`waiting ${screenshotTimeout}ms before taking screenshot`);
+    previous = actual;
+    actual = await rafrafScreenshot(progress, screenshotTimeout).catch(e => {
+      progress.log(`failed to take screenshot - ` + e.message);
+      return undefined;
     });
+    if (!actual)
+      continue;
+    // Compare against expectation for the first iteration.
+    const expectation = options.expected && isFirstIteration ? options.expected : previous;
+    if (areEqualScreenshots(actual, expectation, previous))
+      break;
+    if (intermediateResult)
+      progress.log(intermediateResult.errorMessage);
+    isFirstIteration = false;
   }
 
-  async screenshot(metadata: CallMetadata, options: ScreenshotOptions & TimeoutOptions = {}): Promise<Buffer> {
-    const controller = new ProgressController(metadata, this);
-    return controller.run(
-        progress => this._screenshotter.screenshotPage(progress, options),
-        this._timeoutSettings.timeout(options));
+  if (!isFirstIteration)
+    progress.log(`captured a stable screenshot`);
+
+  if (!options.expected)
+    return { actual };
+
+  if (isFirstIteration) {
+    progress.log(`screenshot matched expectation`);
+    return {};
   }
+
+  if (areEqualScreenshots(actual, options.expected, undefined)) {
+    progress.log(`screenshot matched expectation`);
+    return {};
+  }
+  throw new Error(intermediateResult!.errorMessage);
+}, callTimeout).catch(e => {
+  // Q: Why not throw upon isSessionClosedError(e) as in other places?
+  // A: We want user to receive a friendly diff between actual and expected/previous.
+  if (js.isJavaScriptErrorInEvaluate(e) || isInvalidSelectorError(e))
+    throw e;
+  let errorMessage = e.message;
+  if (e instanceof TimeoutError && intermediateResult?.previous)
+    errorMessage = `Failed to take two consecutive stable screenshots.`;
+  return {
+    log: compressCallLog(e.message ? [...metadata.log, e.message] : metadata.log),
+    ...intermediateResult,
+    errorMessage,
+    timedOut: (e instanceof TimeoutError),
+  };
+});
+  }
+
+  async screenshot(metadata: CallMetadata, options: ScreenshotOptions & TimeoutOptions = {}): Promise < Buffer > {
+  const controller = new ProgressController(metadata, this);
+  return controller.run(
+    progress => this._screenshotter.screenshotPage(progress, options),
+    this._timeoutSettings.timeout(options));
+}
 
   async close(metadata: CallMetadata, options: { runBeforeUnload?: boolean, reason?: string } = {}) {
-    if (this._closedState === 'closed')
-      return;
-    if (options.reason)
-      this._closeReason = options.reason;
-    const runBeforeUnload = !!options.runBeforeUnload;
-    if (this._closedState !== 'closing') {
-      this._closedState = 'closing';
-      // This might throw if the browser context containing the page closes
-      // while we are trying to close the page.
-      await this._delegate.closePage(runBeforeUnload).catch(e => debugLogger.log('error', e));
-    }
-    if (!runBeforeUnload)
-      await this._closedPromise;
-    if (this._ownedContext)
-      await this._ownedContext.close(options);
+  if (this._closedState === 'closed')
+    return;
+  if (options.reason)
+    this._closeReason = options.reason;
+  const runBeforeUnload = !!options.runBeforeUnload;
+  if (this._closedState !== 'closing') {
+    this._closedState = 'closing';
+    // This might throw if the browser context containing the page closes
+    // while we are trying to close the page.
+    await this._delegate.closePage(runBeforeUnload).catch(e => debugLogger.log('error', e));
   }
+  if (!runBeforeUnload)
+    await this._closedPromise;
+  if (this._ownedContext)
+    await this._ownedContext.close(options);
+}
 
-  isClosed(): boolean {
-    return this._closedState === 'closed';
-  }
+isClosed(): boolean {
+  return this._closedState === 'closed';
+}
 
-  hasCrashed() {
-    return this._crashed;
-  }
+hasCrashed() {
+  return this._crashed;
+}
 
-  isClosedOrClosingOrCrashed() {
-    return this._closedState !== 'open' || this._crashed;
-  }
+isClosedOrClosingOrCrashed() {
+  return this._closedState !== 'open' || this._crashed;
+}
 
-  _addWorker(workerId: string, worker: Worker) {
-    this._workers.set(workerId, worker);
-    this.emit(Page.Events.Worker, worker);
-  }
+_addWorker(workerId: string, worker: Worker) {
+  this._workers.set(workerId, worker);
+  this.emit(Page.Events.Worker, worker);
+}
 
-  _removeWorker(workerId: string) {
-    const worker = this._workers.get(workerId);
-    if (!worker)
-      return;
+_removeWorker(workerId: string) {
+  const worker = this._workers.get(workerId);
+  if (!worker)
+    return;
+  worker.didClose();
+  this._workers.delete(workerId);
+}
+
+_clearWorkers() {
+  for (const [workerId, worker] of this._workers) {
     worker.didClose();
     this._workers.delete(workerId);
   }
+}
 
-  _clearWorkers() {
-    for (const [workerId, worker] of this._workers) {
-      worker.didClose();
-      this._workers.delete(workerId);
-    }
-  }
+  async setFileChooserIntercepted(enabled: boolean): Promise < void> {
+  this._interceptFileChooser = enabled;
+  await this._delegate.updateFileChooserInterception();
+}
 
-  async setFileChooserIntercepted(enabled: boolean): Promise<void> {
-    this._interceptFileChooser = enabled;
-    await this._delegate.updateFileChooserInterception();
-  }
+fileChooserIntercepted() {
+  return this._interceptFileChooser;
+}
 
-  fileChooserIntercepted() {
-    return this._interceptFileChooser;
-  }
+frameNavigatedToNewDocument(frame: frames.Frame) {
+  this.emit(Page.Events.InternalFrameNavigatedToNewDocument, frame);
+  const origin = frame.origin();
+  if (origin)
+    this._browserContext.addVisitedOrigin(origin);
+}
 
-  frameNavigatedToNewDocument(frame: frames.Frame) {
-    this.emit(Page.Events.InternalFrameNavigatedToNewDocument, frame);
-    const origin = frame.origin();
-    if (origin)
-      this._browserContext.addVisitedOrigin(origin);
-  }
+allInitScripts() {
+  const bindings = [...this._browserContext._pageBindings.values(), ...this._pageBindings.values()];
+  return [kBuiltinsScript, ...bindings.map(binding => binding.initScript), ...this._browserContext.initScripts, ...this.initScripts];
+}
 
-  allInitScripts() {
-    const bindings = [...this._browserContext._pageBindings.values(), ...this._pageBindings.values()];
-    return [kBuiltinsScript, ...bindings.map(binding => binding.initScript), ...this._browserContext.initScripts, ...this.initScripts];
-  }
+getBinding(name: string) {
+  return this._pageBindings.get(name) || this._browserContext._pageBindings.get(name);
+}
 
-  getBinding(name: string) {
-    return this._pageBindings.get(name) || this._browserContext._pageBindings.get(name);
-  }
+setScreencastOptions(options: { width: number, height: number, quality: number } | null) {
+  this._delegate.setScreencastOptions(options).catch(e => debugLogger.log('error', e));
+  this._frameThrottler.setThrottlingEnabled(!!options);
+}
 
-  setScreencastOptions(options: { width: number, height: number, quality: number } | null) {
-    this._delegate.setScreencastOptions(options).catch(e => debugLogger.log('error', e));
-    this._frameThrottler.setThrottlingEnabled(!!options);
-  }
+throttleScreencastFrameAck(ack: () => void) {
+  // Don't ack immediately, tracing has smart throttling logic that is implemented here.
+  this._frameThrottler.ack(ack);
+}
 
-  throttleScreencastFrameAck(ack: () => void) {
-    // Don't ack immediately, tracing has smart throttling logic that is implemented here.
-    this._frameThrottler.ack(ack);
-  }
-
-  temporarilyDisableTracingScreencastThrottling() {
-    this._frameThrottler.recharge();
-  }
+temporarilyDisableTracingScreencastThrottling() {
+  this._frameThrottler.recharge();
+}
 
   async safeNonStallingEvaluateInAllFrames(expression: string, world: types.World, options: { throwOnJSErrors?: boolean } = {}) {
-    await Promise.all(this.frames().map(async frame => {
-      try {
-        await frame.nonStallingEvaluateInExistingContext(expression, world);
-      } catch (e) {
-        if (options.throwOnJSErrors && js.isJavaScriptErrorInEvaluate(e))
-          throw e;
-      }
-    }));
-  }
+  await Promise.all(this.frames().map(async frame => {
+    try {
+      await frame.nonStallingEvaluateInExistingContext(expression, world);
+    } catch (e) {
+      if (options.throwOnJSErrors && js.isJavaScriptErrorInEvaluate(e))
+        throw e;
+    }
+  }));
+}
 
   async hideHighlight() {
-    await Promise.all(this.frames().map(frame => frame.hideHighlight().catch(() => {})));
-  }
+  await Promise.all(this.frames().map(frame => frame.hideHighlight().catch(() => { })));
+}
 
-  markAsServerSideOnly() {
-    this._isServerSideOnly = true;
-  }
+markAsServerSideOnly() {
+  this._isServerSideOnly = true;
+}
 }
 
 export class Worker extends SdkObject {
@@ -859,7 +859,7 @@ export class Worker extends SdkObject {
   constructor(parent: SdkObject, url: string) {
     super(parent, 'worker');
     this._url = url;
-    this._executionContextCallback = () => {};
+    this._executionContextCallback = () => { };
     this._executionContextPromise = new Promise(x => this._executionContextCallback = x);
   }
 
