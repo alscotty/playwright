@@ -184,3 +184,26 @@ test('waitFor should not leak', async ({ page, mode, toImpl }) => {
   expect(leakedJSHandles()).toBeFalsy();
   await checkWeakRefs(toImpl(page), 2, 25);
 });
+
+test('requestWebWorkersGC should garbage collect all weakrefs', async ({ page, mode, toImpl }) => {
+  const workerCreatedPromise = page.waitForEvent('worker');
+  await page.evaluate(() => new Worker(URL.createObjectURL(new Blob([`
+  globalThis.weakRefs = [];
+  globalThis.createWeakRefs = (elements) => {
+    for (const element of elements) {
+      globalThis.weakRefs.push(new WeakRef(element));
+    }
+  };
+  globalThis.countWeakRefs = () => globalThis.weakRefs.filter(r => !!r.deref()).length;
+  console.log(globalThis.weakRefs);
+`], { type: 'application/javascript' }))));
+  const worker = await workerCreatedPromise;
+
+  const hasCreateWeakRefs = await worker.evaluate(() => {
+    console.log({ globalThis })
+    return typeof globalThis.createWeakRefs === 'function';
+  });
+  expect(hasCreateWeakRefs).toBe(true);
+  // await page._delegate.requestWebWorkersGC();
+  await page.requestWebWorkersGC();
+})

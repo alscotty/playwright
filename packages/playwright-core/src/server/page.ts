@@ -60,6 +60,7 @@ export interface PageDelegate {
   goBack(): Promise<boolean>;
   goForward(): Promise<boolean>;
   requestGC(): Promise<void>;
+  requestWebWorkersGC(): Promise<void>;
   addInitScript(initScript: InitScript): Promise<void>;
   removeNonInternalInitScripts(): Promise<void>;
   closePage(runBeforeUnload: boolean): Promise<void>;
@@ -444,6 +445,17 @@ export class Page extends SdkObject {
 
   requestGC(): Promise<void> {
     return this._delegate.requestGC();
+  }
+
+  async requestWebWorkersGC(): Promise<void> {
+    let workers = this._workers;
+    console.log({ workers });
+    
+    for (let worker of workers) {
+      await worker[1]._existingExecutionContext?.rawEvaluateHandle(`() => {
+        if (globalThis.gc) globalThis.gc();
+      }`);
+    }
   }
 
   registerLocatorHandler(selector: string, noWaitAfter: boolean | undefined) {
