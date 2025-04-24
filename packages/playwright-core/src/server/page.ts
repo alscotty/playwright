@@ -450,18 +450,18 @@ export class Page extends SdkObject {
   async requestWebWorkersGC(): Promise<any> {
   // async requestWebWorkersGC(): Promise<void> {
     console.log('Current workers:', Array.from(this._workers.values())); // Debug log
+    return this._workers;
 
     // If _workers is empty, synchronize with client-side workers
-    if (this._workers.size === 0) {
-      console.warn('No workers in _workers map. Synchronizing with client-side workers...');
-      for (const page of this.context().pages()) {
-        for (const worker of page._workers.values()) {
-        const workerId = worker.url(); // Use the worker's URL or another unique identifier
-        this._addWorker(workerId, worker);
-      }
-    }
+    // if (this._workers.size === 0) {
+    //   console.warn('No workers in _workers map. Synchronizing with client-side workers...');
+    //   for (const page of this.context().pages()) {
+    //     for (const worker of page._workers.values()) {
+    //     const workerId = worker.url(); // Use the worker's URL or another unique identifier
+    //     this._addWorker(workerId, worker);
+    //   }
+    // }
 
-    return this._workers;
     await Promise.all(Array.from(this._workers.values()).map(async worker => {
       try {
         await worker._existingExecutionContext?.rawEvaluateHandle(`() => {
@@ -475,7 +475,7 @@ export class Page extends SdkObject {
         console.error(`Failed to clear WeakRefs for worker: ${worker.url()}`, error);
       }
     }));
-  }
+  // }
 }
 
 registerLocatorHandler(selector: string, noWaitAfter: boolean | undefined) {

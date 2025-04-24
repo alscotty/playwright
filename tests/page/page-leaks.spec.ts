@@ -185,7 +185,7 @@ test('waitFor should not leak', async ({ page, mode, toImpl }) => {
   await checkWeakRefs(toImpl(page), 2, 25);
 });
 
-test('requestWebWorkersGC should garbage collect all weakrefs', async ({ page, mode, toImpl, toImplInWorkerScope }) => {
+test('requestWebWorkersGC should garbage collect all weakrefs', async ({ page, toImpl, toImplInWorkerScope }) => {
   const [worker] = await Promise.all([
     page.waitForEvent('worker'),
     page.evaluate(() => new Worker(URL.createObjectURL(new Blob([`console.log("worker created")`], { type: 'application/javascript' })))),
@@ -199,19 +199,21 @@ test('requestWebWorkersGC should garbage collect all weakrefs', async ({ page, m
     };
     globalThis.createWeakRefs([1, 2, 3]);
     globalThis.countWeakRefs = () => globalThis.weakRefs.filter(r => !!r.deref()).length;
-    console.log("New weakrefs:", globalThis.weakRefs);
   })
   // expect(await worker.evaluate(() => globalThis.countWeakRefs())).toBe(3);
   // Convert the public API `page` object to its internal implementation
-  const pageImpl = toImplInWorkerScope(page);
-
-  // Access internal properties or methods
-  console.log('Internal page object:', pageImpl);
+  const pageImpl = toImpl(page);
+  // const pageImpl = toImplInWorkerScope(page);
 
   // Example: Access the internal `_workers` map
-  console.log('Internal workers:', Array.from(pageImpl._workers.values()));
-
-  let workerLogs = await page.requestWebWorkersGC();
+  // console.log('Internal workers length:', Array.from(pageImpl._workers.values()));
+  // Convert the public API `worker` object to its internal implementation
+  const workerImpl = toImplInWorkerScope(worker);
+// Add the worker to the server-side `_workers` map
+  // await pageImpl._addWorker(workerImpl.url(), workerImpl);
+  console.log("PAGES WORKERS")
+  console.log(pageImpl._workers)
+  let workerLogs = await pageImpl.requestWebWorkersGC();
   console.log("WORKER LOGS!")
   console.log({ workerLogs })
 })
