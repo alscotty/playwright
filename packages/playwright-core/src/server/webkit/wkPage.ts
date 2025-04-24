@@ -764,6 +764,10 @@ export class WKPage implements PageDelegate {
     await this._session.send('Heap.gc');
   }
 
+  async requestWebWorkersGC(): Promise<void> {
+    await this._session.send('Heap.gc');
+  }
+
   async addInitScript(initScript: InitScript): Promise<void> {
     await this._updateBootstrapScript();
   }

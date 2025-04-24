@@ -144,6 +144,10 @@ export class PageDispatcher extends Dispatcher<Page, channels.PageChannel, Brows
   async requestGC(params: channels.PageRequestGCParams, metadata: CallMetadata): Promise<channels.PageRequestGCResult> {
     await this._page.requestGC();
   }
+  
+  async requesrequestWebWorkersGCGC(params: channels.PageRequestWorkerGCParams, metadata: CallMetadata): Promise<channels.PageRequestWorkerGCResult> {
+    await this._page.requestWebWorkersGC();
+  }
 
   async registerLocatorHandler(params: channels.PageRegisterLocatorHandlerParams, metadata: CallMetadata): Promise<channels.PageRegisterLocatorHandlerResult> {
     const uid = this._page.registerLocatorHandler(params.selector, params.noWaitAfter);

@@ -1545,6 +1545,8 @@ Page:
 
     requestGC:
 
+    requestWebWorkersGC:
+
     registerLocatorHandler:
       parameters:
         selector: string

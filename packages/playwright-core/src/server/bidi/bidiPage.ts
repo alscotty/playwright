@@ -322,6 +322,10 @@ export class BidiPage implements PageDelegate {
     throw new Error('Method not implemented.');
   }
 
+  async requestWebWorkersGC(): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   // TODO: consider calling this only when bindings are added.
   // TODO: delete this method once we can add preload script for persistent context.
   private async _installMainBinding() {

@@ -490,6 +490,10 @@ export class Page extends ChannelOwner<channels.PageChannel> implements api.Page
     await this._channel.requestGC();
   }
 
+  async requestWebWorkersGC() {
+    await this._channel.requestWebWorkersGC();
+  }
+
   async emulateMedia(options: { media?: 'screen' | 'print' | null, colorScheme?: 'dark' | 'light' | 'no-preference' | null, reducedMotion?: 'reduce' | 'no-preference' | null, forcedColors?: 'active' | 'none' | null, contrast?: 'no-preference' | 'more' | null } = {}) {
     await this._channel.emulateMedia({
       media: options.media === null ? 'no-override' : options.media,

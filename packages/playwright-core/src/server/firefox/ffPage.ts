@@ -384,6 +384,10 @@ export class FFPage implements PageDelegate {
   async requestGC(): Promise<void> {
     await this._session.send('Heap.collectGarbage');
   }
+ 
+  async requestWebWorkersGC(): Promise<void> {
+    await this._session.send('Heap.collectGarbage');
+  }
 
   async addInitScript(initScript: InitScript, worldName?: string): Promise<void> {
     this._initScripts.push({ initScript, worldName });

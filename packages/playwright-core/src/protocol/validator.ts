@@ -1192,6 +1192,8 @@ scheme.PageGoForwardResult = tObject({
 });
 scheme.PageRequestGCParams = tOptional(tObject({}));
 scheme.PageRequestGCResult = tOptional(tObject({}));
+scheme.PageRequestWorkerGCParams = tOptional(tObject({}));
+scheme.PageRequestWorkerGCResult = tOptional(tObject({}));
 scheme.PageRegisterLocatorHandlerParams = tObject({
   selector: tString,
   noWaitAfter: tOptional(tBoolean),
