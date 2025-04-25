@@ -16,6 +16,7 @@
 
 import { MultiMap } from '../../packages/playwright-core/lib/utils/isomorphic/multimap';
 import { test, expect } from './pageTest';
+import { Page } from 'playwright-core';
 
 function leakedJSHandles(): string {
   const map = new MultiMap();
@@ -205,15 +206,12 @@ test('requestWebWorkersGC should garbage collect all weakrefs', async ({ page, t
   const pageImpl = toImpl(page);
   // const pageImpl = toImplInWorkerScope(page);
 
-  // Example: Access the internal `_workers` map
-  // console.log('Internal workers length:', Array.from(pageImpl._workers.values()));
   // Convert the public API `worker` object to its internal implementation
-  const workerImpl = toImplInWorkerScope(worker);
-// Add the worker to the server-side `_workers` map
-  // await pageImpl._addWorker(workerImpl.url(), workerImpl);
+  // const workerImpl = toImplInWorkerScope(worker);
   console.log("PAGES WORKERS")
   console.log(pageImpl._workers)
   let workerLogs = await pageImpl.requestWebWorkersGC();
+  // let workerLogs = await pageImpl.requestWebWorkersGC();
   console.log("WORKER LOGS!")
   console.log({ workerLogs })
 })

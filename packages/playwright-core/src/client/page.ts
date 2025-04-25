@@ -490,7 +490,8 @@ export class Page extends ChannelOwner<channels.PageChannel> implements api.Page
     await this._channel.requestGC();
   }
 
-  async requestWebWorkersGC() {
+  async requestWebWorkersGC(): Promise<any> {
+    console.log("CALLING CLIENT FXN")
     await this._channel.requestWebWorkersGC();
   }
 

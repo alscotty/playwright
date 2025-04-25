@@ -448,9 +448,14 @@ export class Page extends SdkObject {
   }
 
   async requestWebWorkersGC(): Promise<any> {
-  // async requestWebWorkersGC(): Promise<void> {
-    console.log('Current workers:', Array.from(this._workers.values())); // Debug log
-    return this._workers;
+    console.log("Calling API FXN")
+    return "Something"
+  }
+
+  // async requestWebWorkersGC(): Promise<any> {
+  // // async requestWebWorkersGC(): Promise<void> {
+  //   console.log('Current workers:', Array.from(this._workers.values())); // Debug log
+  //   return this._workers;
 
     // If _workers is empty, synchronize with client-side workers
     // if (this._workers.size === 0) {
@@ -462,21 +467,21 @@ export class Page extends SdkObject {
     //   }
     // }
 
-    await Promise.all(Array.from(this._workers.values()).map(async worker => {
-      try {
-        await worker._existingExecutionContext?.rawEvaluateHandle(`() => {
-            if (globalThis.weakRefs) {
-              globalThis.weakRefs.forEach(ref => ref.deref());
-              globalThis.weakRefs = [];
-            }
-          }`);
-        console.log(`WeakRefs cleared for worker: ${worker.url()}`);
-      } catch (error) {
-        console.error(`Failed to clear WeakRefs for worker: ${worker.url()}`, error);
-      }
-    }));
+    // await Promise.all(Array.from(this._workers.values()).map(async worker => {
+    //   try {
+    //     await worker._existingExecutionContext?.rawEvaluateHandle(`() => {
+    //         if (globalThis.weakRefs) {
+    //           globalThis.weakRefs.forEach(ref => ref.deref());
+    //           globalThis.weakRefs = [];
+    //         }
+    //       }`);
+    //     console.log(`WeakRefs cleared for worker: ${worker.url()}`);
+    //   } catch (error) {
+    //     console.error(`Failed to clear WeakRefs for worker: ${worker.url()}`, error);
+    //   }
+    // }));
   // }
-}
+// }
 
 registerLocatorHandler(selector: string, noWaitAfter: boolean | undefined) {
   const uid = ++this._lastLocatorHandlerUid;
